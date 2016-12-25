@@ -143,10 +143,3 @@ footer {
         color: #175837;
     }
 }
-
-.player {
-    border: 2px solid #a0fa96;
-    position: fixed;
-    left: 0;
-    bottom: 0;
-}
