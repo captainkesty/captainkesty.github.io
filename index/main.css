@@ -115,17 +115,20 @@ pre {
 }
 
 footer {
-    border-top: 2px solid #a0fa96;
+    border: 2px solid #a0fa96;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
     font-size: 0.85em;
-    margin-top: 1.5em;
-    padding: 1em 0;
+    margin: 1.5em;
+    padding: 1em;
 }
 
 .cursor {
     background: none transparent;
     border: 1px solid transparent;
     color: #9cdc9c;
-
     animation-name: blinker;
     animation-duration: 1s;
     animation-timing-function: step-start;
@@ -139,4 +142,11 @@ footer {
         border-radius: 1px;
         color: #175837;
     }
+}
+
+.player {
+    border: 2px solid #a0fa96;
+    position: fixed;
+    left: 0;
+    bottom: 0;
 }
