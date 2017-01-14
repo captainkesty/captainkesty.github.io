@@ -35,3 +35,15 @@
   font-weight: 700;
   font-style: italic;
 }
+
+@font-face {
+    font-family: 'topazplus';
+    src: url('index/topazplus_a1200_v1.0-webfont.eot');
+    src: url('index/topazplus_a1200_v1.0-webfont.eot?#iefix') format('embedded-opentype'),
+         url('index/topazplus_a1200_v1.0-webfont.woff2') format('woff2'),
+         url('index/topazplus_a1200_v1.0-webfont.woff') format('woff'),
+         url('index/topazplus_a1200_v1.0-webfont.ttf') format('truetype'),
+         url('index/topazplus_a1200_v1.0-webfont.svg#topazplus_a600a1200a4000Rg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}

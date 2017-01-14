@@ -6,80 +6,363 @@
         <meta name="description" content="deft's website">
         <link href="index/main.css" rel="stylesheet">
         <link rel="stylesheet" href="index/hack.css">
+        <script src="index/xmeffects.js"></script>
+        <script src="index/xm.js"></script>
+        <script src="index/codef_core.js"></script> 
+        <script src="index/codef_starfield.js"></script>
+        <script src="index/codef_3d.js"></script>
+        <script>
+            var mycanvas;
+            var mystarfield;
+            var my3d;
+            var textEffects = [false, false];
+            var lastRow = false;
 
-    </head><body><header>
-            <div><a class="title" href="https://captainkesty.github.io">deft</a></div>
-            <div><a class="onion">student at wlu</a></div>
-            <div class="onion"><a href="https://captainkesty.github.io">captainkesty.github.io</a> | <a href="https://github.com/captainkesty">github.com/captainkesty</a></div>
-        </header>
+            function doCanvas() {
+                mycanvas.fill('#000000');
+                mystarfield.draw();
+                my3d.group.rotation.x += 0.01;
+                my3d.group.rotation.y += 0.02;
+                my3d.group.rotation.z += 0.04;
+                my3d.draw();
+                requestAnimFrame(doCanvas);
+            }
 
-    <main>
-        <h1>amateur coder</h1>
+            function htmlDecode(input) {
+                try {
+                    return new DOMParser().parseFromString(input, "text/html").documentElement.textContent;
+                } catch (ex) {
+                    // hacks, and more hacks
+                    return input.replace(new RegExp("&lt;a", 'g'), "<a").replace(new RegExp("&lt;/", 'g'), "</").replace(new RegExp('"&gt;', 'g'), '">').replace(new RegExp("a&gt;", 'g'), "a>");
+                }
+            }
 
-        <p>you can see my repositories at <a href="https://github.com/captainkesty">my github</a>.</p>
+            function writeText(callback) {
+                var writer = function (opacity, callback) {
+                    // ugh, hacks to work around shit
+                    var textNS = document.getElementById('textNS').innerHTML.substr(1);
+                    var decodedtext = htmlDecode(textNS).split("\n");
+                    decodedtext.shift();
+                    var text = "<div style='vertical-align:top; display:inline-block; opacity:" + opacity + "'>" + textNS.split("\n")[0] + "\n" + decodedtext.join("\n") + "</div>";
+                    document.getElementById('text').innerHTML = text;
+                    if (opacity >= 1)
+                        callback();
+                    else
+                        setTimeout(function () {
+                            writer(opacity + 0.1, callback);
+                        }, 10);
+                }
+                writer(0, callback);
+            }
 
-        <h2 id="about">about me</h2>
+            function doTextEffects() {
+                if (textEffects[0]) {
+                    document.getElementById('text').style['margin-left'] = "-2px";
+                } else {
+                    document.getElementById('text').style['margin-left'] = "0px";
+                }
+                if (textEffects[1]) {
+                    document.getElementById('text').style['margin-top'] = "10px";
+                } else {
+                    document.getElementById('text').style['margin-top'] = "0px";
+                }
+            }
 
-        <p>i started coding at the age of 13, where i learned to script in Lua for the games <a href="http://store.steampowered.com/app/4000/">Garry's Mod</a> and <a href="https://roblox.com">ROBLOX</a>.</p>
+            function playerCallback(e) {
+                if (e.t < window.XMPlayer.audioctx.currentTime) {
+                    console.log("event timestamp: " + e.t + " - curtime: " + window.XMPlayer.audioctx.currentTime);
+                    setTimeout(function () {
+                        playerCallback(e);
+                    }, 10);
+                    return;
+                }
+                if ((e.row < 0) || (e.pat < 0))
+                    return;
+                if (lastRow == ((e.pat << 16) | e.row))
+                    return;
+                lastRow = ((e.pat << 16) | e.row);
+                var inst = window.XMPlayer.xm.patterns[e.pat][e.row][0][1];
+                if (inst == -1)
+                    return;
 
-        <p>in high school, i learned algorithmic and interface programming in Java. i also learned how to develop applications and games for the Android OS.</p>
+                if (((inst == 1) || (inst == 2)) && (!textEffects[inst - 1])) {
+                    textEffects[inst - 1] = true;
+                    if (textEffects[(inst - 1) ^ 1]) {
+                        textEffects[(inst - 1) ^ 1] = false;
+                    }
+                    doTextEffects();
+                } else if ((inst != 1) && (inst != 2)) {
+                    if (textEffects[0]) {
+                        textEffects[0] = false;
+                    }
+                    if (textEffects[1]) {
+                        textEffects[1] = false;
+                    }
+                    doTextEffects();
+                }
+            }
 
-        <h2 id="languages">languages</h2>
+            function loadXMAndInit(xmdata) {
+                if (!XMPlayer.load(xmdata)) {
+                    return;
+                }
 
-        <p>c|html|lua|python|ruby|java|javascript|xml</p>
+                XMView.pushEvent = playerCallback;
+                console.log(window.XMPlayer.xm.patterns);
+                XMPlayer.play();
+                return XMPlayer.xm;
+            }
 
-        <h2 id="projects">projects</h2>
+            function downloadXM(uri, callback) {
+                var xmReq = new XMLHttpRequest();
+                xmReq.open("GET", uri, true);
+                xmReq.responseType = "arraybuffer";
+                xmReq.onload = function (xmEvent) {
+                    var arrayBuffer = xmReq.response;
+                    if (arrayBuffer) {
+                        loadXMAndInit(arrayBuffer);
+                    }
+                    callback();
+                };
+                xmReq.send(null);
+            }
 
-        <p><a href="https://github.com/notsign/893FinalProject">893 LibGDX project</a> | JAVA</p>
+            function startChip(callback) {
+                if ((window.AudioContext === undefined) && (window.webkitAudioContext === undefined)) {
+                    callback();
+                    return;
+                }
+                XMPlayer.init();
+                downloadXM('index/bg.xm', callback);
+            }
+            function startTro() {
+                startChip(function () {
+                    mycanvas = new canvas(640, 480, "main");
+                    mystarfield = new starfield3D(mycanvas, 500, 2, 640, 480, 320, 240, '#FFFFFF', 100, 0, 0);
+                    my3d = new codef3D(mycanvas, 320, 75, 1, 1500);
+                    var lbm = new LineBasicMaterial({color: 0xffd700, linewidth: 2});
+                    // L
 
-        <p>i worked on this project with two other classmates for my senior year of high school. we developed a game for Android using LibGDX, and i developed the engine used.</p>
-        <p>this project ended up using a variety of different programs. examples include: tiled (map creator), texturepacker (putting together assets), LibGDX (the library we primarily used).</p>
-        <p>assets used in the program are not original and are taken from other properties, we only own the code we wrote.</p>
+                    my3d.line({x: -45, y: 0, z: 0}, {x: -45, y: 15, z: 0}, lbm);
+                    my3d.line({x: -45, y: 0, z: 0}, {x: -30, y: 0, z: 0}, lbm);
 
-        <p><a href='https://github.com/captainkesty/AshleyTest'>AshleyTest</a> | JAVA</p>
+                    // A
 
-        <p>derived off the above project, i integrated another third party library that would assist with grouping of entities within our game.</p>
+                    my3d.line({x: -25, y: 0, z: 0}, {x: -15, y: 15, z: 0}, lbm);
+                    my3d.line({x: -22, y: 5, z: 0}, {x: -10, y: 5, z: 0}, lbm);
+                    my3d.line({x: -15, y: 15, z: 0}, {x: -5, y: 0, z: 0}, lbm);
 
-        <p><a href='https://github.com/captainkesty/FreeToPlay'>FreeToPlay</a> | JAVASCRIPT/HTML</p>
+                    // U
 
-        <p>i created an html page that would pull the "Free to Play" champions for the popular game <a href="http://play.na.leagueoflegends.com/en_US">League of Legends</a>. this taught me how to deal with APIs and push/pull requests with an external database</p>
+                    my3d.line({x: 0, y: 0, z: 0}, {x: 0, y: 15, z: 0}, lbm);
+                    my3d.line({x: 0, y: 0, z: 0}, {x: 10, y: 0, z: 0}, lbm);
+                    my3d.line({x: 10, y: 0, z: 0}, {x: 10, y: 15, z: 0}, lbm);
 
-        <p><a href='https://vimeo.com/164639923'>Awesome Adventure</a> | PYTHON</p>
+                    // R
 
-        <p>i was contracted to write some python scripts for my friend for her film. i was tasked with simplifying the process of managing different cameras. i don't have the code archived anywhere, but i'm in the credits.</p>
+                    my3d.line({x: 15, y: 0, z: 0}, {x: 15, y: 15, z: 0}, lbm);
+                    my3d.line({x: 15, y: 7, z: 0}, {x: 25, y: 0, z: 0}, lbm);
+                    my3d.line({x: 15, y: 15, z: 0}, {x: 25, y: 15, z: 0}, lbm);
+                    my3d.line({x: 15, y: 7, z: 0}, {x: 25, y: 15, z: 0}, lbm);
 
-        <p><a href='https://github.com/captainkesty/RPGbot'>RPGbot</a> | JAVASCRIPT</p>
+                    // I
 
-        <p>i made a bot for use in the voip program Discord. this bot would be able to take commands from the chat program and simulated an RPG game within the client. if you've played Final Fantasy, this is similar.</p>
+                    my3d.line({x: 30, y: 0, z: 0}, {x: 30, y: 15, z: 0}, lbm);
 
-        <p><a href="https://github.com/captainkesty/barks">barksbot</a> | JAVASCRIPT</p>
+                    // E
 
-        <p>originally used to play the sound effect of a dog barking, it ended up being a general music player. plays a song based on the command entered. also a Discord bot.</p>
+                    my3d.line({x: 35, y: 0, z: 0}, {x: 35, y: 15, z: 0}, lbm);
+                    my3d.line({x: 35, y: 0, z: 0}, {x: 45, y: 0, z: 0}, lbm);
+                    my3d.line({x: 35, y: 7, z: 0}, {x: 40, y: 7, z: 0}, lbm);
+                    my3d.line({x: 35, y: 15, z: 0}, {x: 45, y: 15, z: 0}, lbm);
 
-        <p><a href="https://devpost.com/software/healthsimple">healthsimple</a> | JAVA/XML</p>
+                    // R
 
-        <p>i attended a hackathon at the Google KW offices named <a href="http://devswithoutborders.org/breakinequality/">BreakInequality</a>. there, i, along with 4 others, created a system that involved both SMS and an Android app.</p>
-        <p>a lot of the details about the system are in the link provided. my role in this project was primarily the backend developer. i implemented the Twilio API, database processing, and assisted in the creation of the Android app.</p>
-        <p>we placed top 10, and won the category of Best Pitch. there were 23 teams of around 4-5 people each.</p>
+                    my3d.line({x: 50, y: 0, z: 0}, {x: 50, y: 15, z: 0}, lbm);
+                    my3d.line({x: 50, y: 7, z: 0}, {x: 65, y: 0, z: 0}, lbm);
+                    my3d.line({x: 50, y: 15, z: 0}, {x: 65, y: 15, z: 0}, lbm);
+                    my3d.line({x: 50, y: 7, z: 0}, {x: 65, y: 15, z: 0}, lbm);
 
-        <h2>other stuff</h2>
+                    doCanvas();
+                    writeText(function() { });
+                });
+            }
 
-        <p>score of distinction in beaver computing contest [grade 10]</p>
-        <p>top 10 of canadian computing contest junior division [grade 11]</p>
-        <p>invited to write the canadian computing contest senior division [grade 12]</p>
-        <p>technical director of music production "Into the Woods" in high school</p>
-        <p>head of the tech crew in high school</p>
-        <p>audio director of various high school music events</p>
-        <p>tech representative of the student council</p>
-        <p>i also play guitar</p>
-    </main>
+            function arc3d(my3d, segmentCount, radius, material, xpir) {
+                var geometry = new THREE.Geometry();
 
-    <footer>
-        By
-        <a href="https://twitter.com/hiitsdeft">@hiitsdeft</a>
+                for (var i = 0; i <= segmentCount; i++) {
+                    var theta = (i / segmentCount) * Math.PI * xpir;
+                    geometry.vertices.push(
+                            new THREE.Vector3(
+                                    Math.cos(theta) * radius,
+                                    Math.sin(theta) * radius,
+                                    0));
+                }
+                my3d.group.add(new THREE.Line(geometry, material));
+            }
+        </script>
+    </head>
+    <body onLoad="startTro();">
+<div id="main"></div>
+<div id="text" style="margin-left: 0px; margin-top: 0px;"><div style="vertical-align:top; display:inline-block; opacity:1.0999999999999999"><header><div><a class="onion">student at wlu</a></div><div class="onion"><a href="https://captainkesty.github.io">captainkesty.github.io</a> | <a href="https://github.com/captainkesty">github.com/captainkesty</a></div></header><main><h2>amateur coder</h2>check out my <a href="https://github.com/captainkesty">projects on github</a>
 
-        on christmas of 2016<span class="cursor"></span>
+<h2>about me</h2>i'm primarily a backend dev, but i do frontend too. that's really it. i program stuff.
 
-    </footer>
+<h2>languages</h2>c|html|lua|python|ruby|java|javascript|xml
 
-</body></html>
+<h2>notable projects</h2>
+<a href="https://github.com/notsign/893FinalProject">893 LibGDX project</a> | JAVA
+
+i worked on this project with two other classmates for my senior year of high school. we developed a game for Android using LibGDX, and i developed the engine used.
+
+this project ended up being incomplete, but the real magic comes from the amount of progress and how much we learned in so little time. it's sort of like my origin story.
+
+assets used in the program are not original and are taken from other properties, we only own the code we wrote.
+
+
+<a href='https://github.com/captainkesty/AshleyTest'>AshleyTest</a> | JAVA
+
+derived off the above project, i integrated another third party library that would assist with grouping of entities within our game. it's like a part II to 893 LibGDX project.
+
+
+<a href='https://github.com/captainkesty/FreeToPlay'>FreeToPlay</a> | JAVASCRIPT/HTML
+
+i created an html page that would pull the "Free to Play" champions for the popular game <a href="http://play.na.leagueoflegends.com/en_US">League of Legends</a>.
+
+if i ever had to point to where i started learning how to do backend dev, this would be it. it's a simple jquery ajax to an api, but it taught me the basics of json and database pulls.
+
+<a href='https://vimeo.com/164639923'>Awesome Adventure</a> | PYTHON
+
+i was asked to write/debug some python scripts for my friend for her film. most of it was simple stuff like camera management, but i'm happy i could be of some use. i don't have the code archived anywhere, but i'm in the credits.
+
+thanks, elaina
+
+
+<a href='https://github.com/captainkesty/RPGbot'>RPGbot</a> | JAVASCRIPT
+
+i made a bot for use in the voip program Discord. this bot would be able to take commands from the chat program and simulate an RPG game within the client.
+
+again, another project that was mostly learning how to deal with an api.
+
+
+<a href="https://github.com/captainkesty/barks">barksbot</a> | JAVASCRIPT
+
+originally used to play the sound effect of a dog barking (yes seriously), it ended up being a general music player. plays a song based on the command entered.
+
+
+<a href="https://devpost.com/software/healthsimple">healthsimple</a> | JAVA/XML
+
+i attended a hackathon at the Google KW offices named <a href="http://devswithoutborders.org/breakinequality/">Br/eakInequality</a>. there, i, along with 4 others, created a system that involved both SMS and an Android app.
+
+a lot of the details about the project are in the link provided, and it's put together pretty well. shoutouts to the business side of our team for that.
+
+my role in this project was primarily the backend developer. i implemented the Twilio api, database processing, and assisted in the creation of the Android app.
+
+we placed top 10, and won the category of Best Pitch. there were 23 teams of around 4-5 people each.
+
+i was also the only student not from university of waterloo, lol (every attendee was from that school)
+
+<h2>stuff i can brag about</h2>
+score of distinction in beaver computing contest
+[grade 10]
+
+top 10 of canadian computing contest junior division
+[grade 11]
+
+invited to write the canadian computing contest senior division
+technical director of music production "Into the Woods" in high school
+[grade 12]
+
+head of the tech crew in high school
+audio director of high school music events
+i also play guitar
+</main>
+</div></div>
+
+
+
+
+        <footer>
+            updated by
+            <a href="https://twitter.com/hydr4xx">hydrax</a>
+
+            1/13/2017<span class="cursor"></span>
+        </footer>
+<noscript>
+                          hydrax
+                      student at wlu
+      <a href="https://captainkesty.github.io">captainkesty.github.io</a> | <a href="https://github.com/captainkesty">github.com/captainkesty</a>
+<h2>amateur coder</h2>
+check out my <a href="https://github.com/captainkesty">projects on github</a>
+
+<h2>about me</h2>
+i'm primarily a backend dev, but i do frontend too. that's really it. i program stuff.
+
+<h2>languages</h2>
+c|html|lua|python|ruby|java|javascript|xml
+
+<h2>notable projects</h2>
+
+<a href="https://github.com/notsign/893FinalProject">893 LibGDX project</a> | JAVA
+
+i worked on this project with two other classmates for my senior year of high school. we developed a game for Android using LibGDX, and i developed the engine used.
+
+this project ended up being incomplete, but the real magic comes from the amount of progress and how much we learned in so little time. it's sort of like my origin story.
+
+assets used in the program are not original and are taken from other properties, we only own the code we wrote.
+
+
+<a href='https://github.com/captainkesty/AshleyTest'>AshleyTest</a> | JAVA
+
+derived off the above project, i integrated another third party library that would assist with grouping of entities within our game. it's like a part II to 893 LibGDX project.
+
+
+<a href='https://github.com/captainkesty/FreeToPlay'>FreeToPlay</a> | JAVASCRIPT/HTML
+
+i created an html page that would pull the "Free to Play" champions for the popular game <a href="http://play.na.leagueoflegends.com/en_US">League of Legends</a>.
+
+if i ever had to point to where i started learning how to do backend dev, this would be it. it's a simple jquery ajax to an api, but it taught me the basics of json and database pulls.
+
+<a href='https://vimeo.com/164639923'>Awesome Adventure</a> | PYTHON
+
+i was asked to write/debug some python scripts for my friend for her film. most of it was simple stuff like camera management, but i'm happy i could be of some use. i don't have the code archived anywhere, but i'm in the credits.
+
+thanks, elaina
+
+
+<a href='https://github.com/captainkesty/RPGbot'>RPGbot</a> | JAVASCRIPT
+
+i made a bot for use in the voip program Discord. this bot would be able to take commands from the chat program and simulate an RPG game within the client.
+
+again, another project that was mostly learning how to deal with an api.
+
+
+<a href="https://github.com/captainkesty/barks">barksbot</a> | JAVASCRIPT
+
+originally used to play the sound effect of a dog barking (yes seriously), it ended up being a general music player. plays a song based on the command entered.
+
+
+<a href="https://devpost.com/software/healthsimple">healthsimple</a> | JAVA/XML
+
+i attended a hackathon at the Google KW offices named <a href="http://devswithoutborders.org/breakinequality/">Br/eakInequality</a>. there, i, along with 4 others, created a system that involved both SMS and an Android app.
+
+a lot of the details about the project are in the link provided, and it's put together pretty well. shoutouts to the business side of our team for that.
+
+my role in this project was primarily the backend developer. i implemented the Twilio api, database processing, and assisted in the creation of the Android app.
+
+we placed top 10, and won the category of Best Pitch. there were 23 teams of around 4-5 people each.
+
+<h2>other stuff</h2>
+
+score of distinction in beaver computing contest [grade 10]
+top 10 of canadian computing contest junior division [grade 11]
+invited to write the canadian computing contest senior division [grade 12]
+technical director of music production "Into the Woods" in high school
+head of the tech crew in high school
+audio director of various high school music events
+tech representative of the student council
+i also play guitar
+</noscript>
+    </body>
+</html>
